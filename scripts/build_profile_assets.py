@@ -14,6 +14,7 @@ Usage:
 
 from __future__ import annotations
 
+import base64
 import random
 from html import escape
 from pathlib import Path
@@ -264,22 +265,33 @@ def card(uid: str, eyebrow: str, title: str, lines: list[str], footer: str | Non
                  avoid=lambda x, y: (20 < x < 460 and 36 < y < 284) or (380 < x < 460 and y < 90))
 
 
-def operator(uid: str, name: str, role: str, handle: str, seed: int) -> str:
+def operator(uid: str, name: str, role: str, handle: str, photo: str, seed: int) -> str:
+    """Operator card. ``photo`` is a file in profile/assets/authors/, embedded as base64
+    because GitHub renders README SVGs as <img>, which cannot load external files."""
     w, h = 640, 200
-    initial = name[0]
+    cx, cy, r = 112, 100, 46
+    rx, ry = 86, 30
+    data = base64.b64encode((OUT / "authors" / photo).read_bytes()).decode("ascii")
+    ring_back = f"M{cx - rx},{cy} a{rx},{ry} 0 0,1 {2 * rx},0"
+    ring_front = f"M{cx - rx},{cy} a{rx},{ry} 0 0,0 {2 * rx},0"
+    ring_full = f"{ring_back} a{rx},{ry} 0 0,1 {-2 * rx},0"
     body = f"""
+    <defs><clipPath id="{uid}-avatar"><circle cx="{cx}" cy="{cy}" r="{r}"/></clipPath></defs>
     <ellipse cx="120" cy="100" rx="260" ry="170" fill="url(#{uid}-neb-i)"/>
-    <g transform="rotate(-18 112 100)">
-      <ellipse cx="112" cy="100" rx="72" ry="26" fill="none" stroke="url(#{uid}-orbit)" stroke-width="1.4"/>
+    <circle cx="{cx}" cy="{cy}" r="{r + 26}" fill="url(#{uid}-glow)" opacity=".7"/>
+    <path d="{ring_back}" transform="rotate(-18 {cx} {cy})" fill="none" stroke="url(#{uid}-orbit)" stroke-width="1.4" stroke-opacity=".7"/>
+    <image href="data:image/jpeg;base64,{data}" x="{cx - r}" y="{cy - r}" width="{2 * r}" height="{2 * r}"
+           clip-path="url(#{uid}-avatar)" preserveAspectRatio="xMidYMid slice"/>
+    <circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{FG}" stroke-opacity=".22" stroke-width="1.2"/>
+    <g transform="rotate(-18 {cx} {cy})">
+      <path d="{ring_front}" fill="none" stroke="url(#{uid}-orbit)" stroke-width="1.6"/>
       <circle r="3" fill="{STAR}">
-        <animateMotion dur="14s" repeatCount="indefinite" path="M40,100 a72,26 0 1,0 144,0 a72,26 0 1,0 -144,0"/>
+        <animateMotion dur="14s" repeatCount="indefinite" path="{ring_full}"/>
       </circle>
     </g>
-    <circle cx="112" cy="100" r="40" fill="{BG_TOP}" stroke="{FG}" stroke-opacity=".18"/>
-    <text x="112" y="114" text-anchor="middle" class="sans" font-size="38" font-weight="500" fill="{FG}">{initial}</text>
-    <text x="222" y="70" class="mono" font-size="14" fill="{ACCENT}">CO-FOUNDER</text>
-    <text x="222" y="114" class="sans" font-size="38" font-weight="500" fill="{FG}">{t(name)}</text>
-    <text x="222" y="146" class="sans" font-size="19" fill="{LEAD}">{t(role)}</text>
+    <text x="232" y="70" class="mono" font-size="14" fill="{ACCENT}">CO-FOUNDER</text>
+    <text x="232" y="114" class="sans" font-size="38" font-weight="500" fill="{FG}">{t(name)}</text>
+    <text x="232" y="146" class="sans" font-size="19" fill="{LEAD}">{t(role)}</text>
     <text x="604" y="176" text-anchor="end" class="code" font-size="13" fill="{MUTED}">@{t(handle)} →</text>"""
     return panel(w, h, uid, body, rx=18, title=f"{name} — Co-Founder / {role}", seed=seed, star_count=34,
                  avoid=lambda x, y: (20 < x < 630 and 40 < y < 190))
@@ -382,8 +394,8 @@ def main() -> None:
 
     write("tech-stack.svg", tech_stack())
 
-    write("operator-loki.svg", operator("ol", "Loki", "DX Engineer", "Cloud-Xero", 61))
-    write("operator-takuma.svg", operator("ot", "Takuma", "DX Engineer", "takuma531zov", 62))
+    write("operator-loki.svg", operator("ol", "Loki", "DX Engineer", "Cloud-Xero", "loki.jpg", 61))
+    write("operator-takuma.svg", operator("ot", "Takuma", "DX Engineer", "takuma531zov", "takuma.jpg", 62))
 
     write("footer.svg", footer())
 
